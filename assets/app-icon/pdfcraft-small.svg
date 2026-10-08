@@ -20,38 +20,29 @@
   <g clip-path="url(#t)">
     <rect width="512" height="512" fill="url(#field)"/>
 
+    <!-- page: rounded rect, fold sits on the top-right corner -->
     <g filter="url(#pageShadow)">
-      <path fill="#ffffff" d="
-        M 118 92
-        h 196
-        L 400 178
-        V 412
-        a 44 44 0 0 1 -44 44
-        H 162
-        a 44 44 0 0 1 -44 -44
-        Z"/>
+      <rect x="118" y="92" width="282" height="364" rx="44" fill="#ffffff"/>
     </g>
+    <path fill="url(#fold)" d="M 318 92 L 400 174 H 318 Z"/>
+    <path fill="#ffffff" opacity="0.28" d="M 318 92 L 352 126 L 318 126 Z"/>
 
-    <path fill="url(#fold)" d="M 314 92 L 400 178 H 314 Z"/>
-    <path fill="#ffffff" opacity="0.28" d="M 314 92 L 348 126 L 314 126 Z"/>
-
-    <!-- pill stem -->
-    <rect x="156" y="148" width="58" height="176" rx="29" fill="url(#letter)"/>
-    <!-- D bowl overlapping the stem -->
+    <!-- P: vertical bar, bowl only on the upper part so the stem hangs below -->
+    <rect x="156" y="148" width="54" height="172" rx="14" fill="url(#letter)"/>
     <path fill="url(#letter)" fill-rule="evenodd" d="
-      M 198 148
-      H 238
-      A 80 80 0 0 1 238 308
-      H 198
+      M 192 148
+      H 240
+      A 54 54 0 0 1 240 256
+      H 192
       Z
-      M 214 184
-      H 234
-      A 46 46 0 0 1 234 276
-      H 214
+      M 210 176
+      H 236
+      A 32 32 0 0 1 236 228
+      H 210
       Z"/>
 
-    <rect x="156" y="348" width="168" height="13" rx="6.5" fill="#e3e6eb"/>
-    <rect x="156" y="372" width="168" height="13" rx="6.5" fill="#e3e6eb"/>
-    <rect x="156" y="398" width="200" height="13" rx="6.5" fill="#e0313c"/>
+    <rect x="156" y="340" width="176" height="13" rx="6.5" fill="#e3e6eb"/>
+    <rect x="156" y="364" width="176" height="13" rx="6.5" fill="#e3e6eb"/>
+    <rect x="156" y="390" width="196" height="13" rx="6.5" fill="#e0313c"/>
   </g>
 </svg>
