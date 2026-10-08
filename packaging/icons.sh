@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Regenerate every app icon from assets/app-icon/pdfcraft.svg (the master vector).
 #
-# Needs: resvg (brew install resvg / cargo install resvg) and python3 (stdlib only, for the .ico).
-# On macOS, iconutil also writes the .icns. The outputs are committed, so building and packaging
+# Needs: resvg (brew install resvg / cargo install resvg) or cairosvg, and python3 (stdlib
+# only, for the .ico and the .icns fallback). On macOS, iconutil writes the .icns; elsewhere
+# a PNG-based .icns is packed in Python. The outputs are committed, so building and packaging
 # never need these tools. After running it, update the sha256 values in ATTRIBUTION.toml, then
 # `cargo xtask assets --write`.
 #
@@ -15,20 +16,21 @@ ID="ai.storyteller.pdfcraft"
 TMP="$(mktemp -d)"
 trap 'rm -rf "$TMP"' EXIT
 
-command -v resvg >/dev/null || { echo "error: resvg not found (brew install resvg)" >&2; exit 1; }
+export PATH="${HOME}/.local/bin:${PATH}"
+if command -v resvg >/dev/null; then
+  render() { resvg -w "$2" -h "$2" "$1" "$3" </dev/null; }
+elif command -v cairosvg >/dev/null; then
+  render() { cairosvg -f png -W "$2" -H "$2" "$1" -o "$3"; }
+else
+  echo "error: resvg or cairosvg not found (brew install resvg / pip install cairosvg)" >&2
+  exit 1
+fi
 
-# The master is a full-bleed 512 tile (rx=112): right for Windows and Linux. macOS icons follow
-# Apple's grid instead: an 824 px body centred on a transparent 1024 canvas.
-MAC="$TMP/macos.svg"
-{
-  echo '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1024 1024">'
-  echo '<image x="100" y="100" width="824" height="824" xlink:href="'"$SVG"'"/>'
-  echo '</svg>'
-} >"$MAC"
+# The master already draws its own squircle with a transparent margin (32 px on a 512 tile),
+# so macOS uses the same file scaled up instead of wrapping it again in Apple's 824/1024 grid.
+MAC="$SVG"
 
-render() { resvg -w "$2" -h "$2" "$1" "$3" </dev/null; }
-
-# 1024 px PNG on Apple's grid (also the runtime Dock icon on macOS, see apps/pdfcraft/src/main.rs).
+# 1024 px PNG (also the runtime Dock icon on macOS, see apps/pdfcraft/src/main.rs).
 render "$MAC" 1024 "$DIR/pdfcraft-1024.png"
 
 # Linux hicolor theme (full bleed; hicolor/256x256 is also the runtime icon on Windows and Linux).
@@ -60,15 +62,44 @@ open(out, "wb").write(head + entries + data)
 PY
 
 # macOS .icns.
+SET="$TMP/pdfcraft.iconset"
+mkdir -p "$SET"
+for s in 16 32 128 256 512; do
+  render "$MAC" "$s" "$SET/icon_${s}x${s}.png"
+  render "$MAC" $((s * 2)) "$SET/icon_${s}x${s}@2x.png"
+done
 if command -v iconutil >/dev/null; then
-  SET="$TMP/pdfcraft.iconset"
-  mkdir -p "$SET"
-  for s in 16 32 128 256 512; do
-    render "$MAC" "$s" "$SET/icon_${s}x${s}.png"
-    render "$MAC" $((s * 2)) "$SET/icon_${s}x${s}@2x.png"
-  done
   iconutil -c icns -o "$DIR/pdfcraft.icns" "$SET"
 else
-  echo "warning: iconutil not found (macOS only); pdfcraft.icns not regenerated" >&2
+  python3 - "$DIR/pdfcraft.icns" "$SET" <<'PY'
+import os, struct, sys
+out, iconset = sys.argv[1], sys.argv[2]
+# PNG-based ICNS types. Sizes are the pixel size of the PNG.
+types = {
+    16: b"icp4",
+    32: b"ic11",  # 16@2x
+    64: b"ic12",  # 32@2x
+    128: b"ic07",
+    256: b"ic08",
+    512: b"ic09",
+    1024: b"ic10",
+}
+files = {
+    16: "icon_16x16.png",
+    32: "icon_16x16@2x.png",
+    64: "icon_32x32@2x.png",
+    128: "icon_128x128.png",
+    256: "icon_128x128@2x.png",
+    512: "icon_256x256@2x.png",
+    1024: "icon_512x512@2x.png",
+}
+chunks = []
+for size, name in files.items():
+    data = open(os.path.join(iconset, name), "rb").read()
+    payload = types[size] + struct.pack(">I", 8 + len(data)) + data
+    chunks.append(payload)
+body = b"".join(chunks)
+open(out, "wb").write(b"icns" + struct.pack(">I", 8 + len(body)) + body)
+PY
 fi
 echo "icons written to $DIR"
