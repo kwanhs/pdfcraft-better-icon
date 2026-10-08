@@ -26,25 +26,11 @@ else
   exit 1
 fi
 
-# The master is a full-bleed 512 tile (rx=112): right for Windows and Linux. macOS icons follow
-# Apple's grid instead: an 824 px body centred on a transparent 1024 canvas. Nested <svg> (not
-# xlink:href) so cairosvg can rasterise it too.
-MAC="$TMP/macos.svg"
-python3 - "$SVG" "$MAC" <<'PY'
-import re, sys
-src, dst = sys.argv[1], sys.argv[2]
-text = open(src, encoding="utf-8").read()
-inner = re.sub(r"^<svg[^>]*>", "", text, count=1)
-inner = re.sub(r"</svg>\s*$", "", inner)
-open(dst, "w", encoding="utf-8").write(
-    '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">\n'
-    '<svg x="100" y="100" width="824" height="824" viewBox="0 0 512 512">\n'
-    f"{inner}\n"
-    "</svg>\n</svg>\n"
-)
-PY
+# The master already draws its own squircle with a transparent margin (32 px on a 512 tile),
+# so macOS uses the same file scaled up instead of wrapping it again in Apple's 824/1024 grid.
+MAC="$SVG"
 
-# 1024 px PNG on Apple's grid (also the runtime Dock icon on macOS, see apps/pdfcraft/src/main.rs).
+# 1024 px PNG (also the runtime Dock icon on macOS, see apps/pdfcraft/src/main.rs).
 render "$MAC" 1024 "$DIR/pdfcraft-1024.png"
 
 # Linux hicolor theme (full bleed; hicolor/256x256 is also the runtime icon on Windows and Linux).
